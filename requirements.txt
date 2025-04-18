@@ -1,0 +1,7 @@
+discord.py>=2.4.0
+python-dotenv>=1.0.0
+mysql-connector-python>=8.0.28
+aiohttp>=3.8.0
+py-discord-html-transcripts>=2.2.1
+emoji>=2.0.0
+pytz>=2023.3 
