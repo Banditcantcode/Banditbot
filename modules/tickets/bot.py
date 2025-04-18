@@ -33,6 +33,10 @@ load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 
 STAFF_ROLE_ID = int(os.getenv('STAFF_ROLE_ID'))
+STAFF_REPORT_ROLE_ID_1 = int(os.getenv('STAFF_REPORT_ROLE_ID_1'))
+STAFF_REPORT_ROLE_ID_2 = int(os.getenv('STAFF_REPORT_ROLE_ID_2'))
+GANG_REPORT_ROLE_ID = int(os.getenv('GANG_REPORT_ROLE_ID'))
+BAN_APPEAL_ROLE_ID = int(os.getenv('BAN_APPEAL_ROLE_ID'))
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -103,43 +107,220 @@ class TicketActionsView(ui.View):
         super().__init__(timeout=None)
         self.ticket_id = ticket_id
 
-    @ui.button(label="Claim Ticket", style=discord.ButtonStyle.green, custom_id="claim_ticket")
+    @ui.button(label="Claim Ticket", style=discord.ButtonStyle.blurple, custom_id="claim_ticket")
     async def claim_ticket(self, interaction: discord.Interaction, button: ui.Button):
-        staff_role = discord.utils.get(interaction.guild.roles, id=STAFF_ROLE_ID)
-        if not staff_role in interaction.user.roles:
-            await interaction.response.send_message("You don't have permission to claim this ticket.", ephemeral=True)
-            return
-            
         await interaction.response.defer()
         
         conn = get_sqlite_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT channel_id, user_id FROM tickets WHERE ticket_id = ?", (self.ticket_id,))
+        cursor.execute("SELECT channel_id, user_id, category FROM tickets WHERE ticket_id = ?", (self.ticket_id,))
         result = cursor.fetchone()
         conn.close()
         
-        if result:
-            channel_id = result[0]
-            channel = interaction.guild.get_channel(channel_id)
+        if not result:
+            await interaction.followup.send("Could not find ticket information.", ephemeral=True)
+            return
+        
+        channel_id, ticket_user_id, ticket_category = result
+        
+        # Check permissions based on ticket category
+        has_permission = False
+        
+        if ticket_category == 'staff':
+            # For staff report tickets, only specific roles can claim
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
             
-            if channel:
-                embed = discord.Embed(
-                    title="Ticket Claimed",
-                    description=f"{interaction.user.mention} has claimed this ticket and will be assisting you.",
-                    color=discord.Color.green()
-                )
-                await channel.send(embed=embed)
-                
-                try:
-                    current_name = channel.name
-                    if not "claimed" in current_name:
-                        await channel.edit(name=f"{current_name}-claimed")
-                except:
-                    pass
-                
-                await interaction.followup.send("You have successfully claimed this ticket.", ephemeral=True)
+            if (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles):
+                has_permission = True
+        
+        elif ticket_category == 'gang':
+            # For gang reports, only gang staff, senior admin, or management can claim
+            gang_staff_role = discord.utils.get(interaction.guild.roles, id=GANG_REPORT_ROLE_ID)
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+            
+            if (gang_staff_role and gang_staff_role in interaction.user.roles) or \
+               (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles):
+                has_permission = True
+        
+        elif ticket_category == 'ban_appeal':
+            # For ban appeals, only ban appeal staff, senior admin, or management can claim
+            ban_appeal_role = discord.utils.get(interaction.guild.roles, id=BAN_APPEAL_ROLE_ID)
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+            
+            if (ban_appeal_role and ban_appeal_role in interaction.user.roles) or \
+               (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles):
+                has_permission = True
+        
+        else:
+            # For regular tickets, any staff can claim
+            staff_role = discord.utils.get(interaction.guild.roles, id=STAFF_ROLE_ID)
+            if staff_role and staff_role in interaction.user.roles:
+                has_permission = True
+        
+        if not has_permission:
+            await interaction.followup.send("You don't have permission to claim this ticket.", ephemeral=True)
+            return
+        
+        channel = interaction.guild.get_channel(channel_id)
+        
+        if channel:
+            embed = discord.Embed(
+                title="Ticket Claimed",
+                description=f"{interaction.user.mention} has claimed this ticket and will be assisting you.",
+                color=discord.Color.green()
+            )
+            await channel.send(embed=embed)
+            
+            try:
+                current_name = channel.name
+                if not "claimed" in current_name:
+                    await channel.edit(name=f"{current_name}-claimed")
+            except:
+                pass
+            
+            await interaction.followup.send("You have successfully claimed this ticket.", ephemeral=True)
     
-    @ui.button(label="Rename Ticket", style=discord.ButtonStyle.primary, custom_id="rename_ticket")
+    @ui.button(label="Add User", style=discord.ButtonStyle.grey, custom_id="add_user")
+    async def add_user(self, interaction: discord.Interaction, button: ui.Button):
+        # Check if user has permission based on ticket category
+        conn = get_sqlite_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT channel_id, category FROM tickets WHERE ticket_id = ?", (self.ticket_id,))
+        result = cursor.fetchone()
+        conn.close()
+        
+        if not result:
+            await interaction.response.send_message("Could not find ticket information.", ephemeral=True)
+            return
+        
+        channel_id, ticket_category = result
+        
+        # Check permissions based on ticket category
+        has_permission = False
+        
+        if ticket_category == 'staff':
+            # For staff report tickets, only specific roles can add users
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+            
+            if (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles):
+                has_permission = True
+        
+        elif ticket_category == 'gang':
+            # For gang reports, only gang staff, senior admin, or management can add users
+            gang_staff_role = discord.utils.get(interaction.guild.roles, id=GANG_REPORT_ROLE_ID)
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+            
+            if (gang_staff_role and gang_staff_role in interaction.user.roles) or \
+               (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles):
+                has_permission = True
+        
+        elif ticket_category == 'ban_appeal':
+            # For ban appeals, only ban appeal staff, senior admin, or management can add users
+            ban_appeal_role = discord.utils.get(interaction.guild.roles, id=BAN_APPEAL_ROLE_ID)
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+            
+            if (ban_appeal_role and ban_appeal_role in interaction.user.roles) or \
+               (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles):
+                has_permission = True
+        
+        else:
+            # For regular tickets, any staff can add users
+            staff_role = discord.utils.get(interaction.guild.roles, id=STAFF_ROLE_ID)
+            if staff_role and staff_role in interaction.user.roles:
+                has_permission = True
+        
+        if not has_permission:
+            await interaction.response.send_message("You don't have permission to add users to this ticket.", ephemeral=True)
+            return
+        
+        # Create a modal for user input
+        class AddUserModal(ui.Modal, title="Add User to Ticket"):
+            # Get either a user ID or user mention
+            user_input = ui.TextInput(
+                label="User ID or @mention",
+                placeholder="Enter user ID or @mention (e.g., 123456789012345678 or @username)",
+                min_length=2,
+                max_length=100
+            )
+            
+            async def on_submit(self, modal_interaction: discord.Interaction):
+                # Get the channel
+                channel = modal_interaction.guild.get_channel(channel_id)
+                if not channel:
+                    await modal_interaction.response.send_message("Could not find the ticket channel.", ephemeral=True)
+                    return
+                
+                # Extract user ID from input (handle both raw ID and mention formats)
+                user_input_str = self.user_input.value.strip()
+                user_id = None
+                
+                # Check if it's a mention (<@123456789>)
+                if user_input_str.startswith('<@') and user_input_str.endswith('>'):
+                    user_id = user_input_str[2:-1]
+                    # Handle nickname mentions <@!123456789>
+                    if user_id.startswith('!'):
+                        user_id = user_id[1:]
+                else:
+                    # Assume it's a raw ID
+                    user_id = user_input_str
+                
+                # Try to convert to int to validate
+                try:
+                    user_id = int(user_id)
+                except ValueError:
+                    await modal_interaction.response.send_message("Invalid user ID format. Please provide a valid user ID or mention.", ephemeral=True)
+                    return
+                
+                # Try to get the user
+                try:
+                    user = await bot.fetch_user(user_id)
+                    if not user:
+                        await modal_interaction.response.send_message("Could not find a user with that ID.", ephemeral=True)
+                        return
+                        
+                    # Get the member object
+                    member = modal_interaction.guild.get_member(user.id)
+                    if not member:
+                        try:
+                            member = await modal_interaction.guild.fetch_member(user.id)
+                        except discord.NotFound:
+                            await modal_interaction.response.send_message("That user is not a member of this server.", ephemeral=True)
+                            return
+                    
+                    # Add user to the ticket channel
+                    await channel.set_permissions(member, read_messages=True, send_messages=True)
+                    
+                    # Send confirmation messages
+                    await modal_interaction.response.send_message(f"Added {user.mention} to the ticket.", ephemeral=True)
+                    
+                    embed = discord.Embed(
+                        title="User Added",
+                        description=f"{modal_interaction.user.mention} has added {user.mention} to this ticket.",
+                        color=discord.Color.blue(),
+                        timestamp=datetime.datetime.now()
+                    )
+                    await channel.send(embed=embed)
+                    
+                except Exception as e:
+                    logger.error(f"Error adding user to ticket: {e}")
+                    await modal_interaction.response.send_message(f"Error adding user: {str(e)}", ephemeral=True)
+        
+        # Show the modal
+        await interaction.response.send_modal(AddUserModal())
+    
+    @ui.button(label="Rename Ticket", style=discord.ButtonStyle.green, custom_id="rename_ticket")
     async def rename_ticket(self, interaction: discord.Interaction, button: ui.Button):
         staff_role = discord.utils.get(interaction.guild.roles, id=STAFF_ROLE_ID)
         if not staff_role in interaction.user.roles:
@@ -178,26 +359,60 @@ class TicketActionsView(ui.View):
     
     @ui.button(label="Close Ticket", style=discord.ButtonStyle.red, custom_id="close_ticket")
     async def close_ticket(self, interaction: discord.Interaction, button: ui.Button):
-        staff_role = discord.utils.get(interaction.guild.roles, id=STAFF_ROLE_ID)
-        
         conn = get_sqlite_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT user_id FROM tickets WHERE ticket_id = ?", (self.ticket_id,))
+        cursor.execute("SELECT user_id, category FROM tickets WHERE ticket_id = ?", (self.ticket_id,))
         result = cursor.fetchone()
-        conn.close()
         
-        is_creator = False
-        if result and result[0] == interaction.user.id:
-            is_creator = True
+        if not result:
+            await interaction.response.send_message("Could not find ticket information.", ephemeral=True)
+            return
+        
+        ticket_user_id, ticket_category = result
+        
+        is_creator = ticket_user_id == interaction.user.id
+        
+        has_permission = False
+        
+        if ticket_category == 'staff':
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
             
-        if not (staff_role in interaction.user.roles or is_creator):
+            if (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles) or \
+               is_creator:
+                has_permission = True
+        elif ticket_category == 'gang':
+            gang_staff_role = discord.utils.get(interaction.guild.roles, id=GANG_REPORT_ROLE_ID)
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+            
+            if (gang_staff_role and gang_staff_role in interaction.user.roles) or \
+               (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles) or \
+               is_creator:
+                has_permission = True
+        elif ticket_category == 'ban_appeal':
+            ban_appeal_role = discord.utils.get(interaction.guild.roles, id=BAN_APPEAL_ROLE_ID)
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+            
+            if (ban_appeal_role and ban_appeal_role in interaction.user.roles) or \
+               (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles) or \
+               is_creator:
+                has_permission = True
+        else:
+            staff_role = discord.utils.get(interaction.guild.roles, id=STAFF_ROLE_ID)
+            if (staff_role and staff_role in interaction.user.roles) or is_creator:
+                has_permission = True
+        
+        if not has_permission:
             await interaction.response.send_message("You don't have permission to close this ticket.", ephemeral=True)
             return
             
         await interaction.response.defer()
         
-        conn = get_sqlite_connection()
-        cursor = conn.cursor()
         cursor.execute("UPDATE tickets SET status = 'closed' WHERE ticket_id = ?", (self.ticket_id,))
         cursor.execute("SELECT channel_id FROM tickets WHERE ticket_id = ?", (self.ticket_id,))
         result = cursor.fetchone()
@@ -283,26 +498,65 @@ class DeleteTicketView(ui.View):
 
     @ui.button(label="Delete Ticket", style=discord.ButtonStyle.danger, custom_id="delete_ticket")
     async def delete_ticket(self, interaction: discord.Interaction, button: ui.Button):
-        staff_role = discord.utils.get(interaction.guild.roles, id=STAFF_ROLE_ID)
-        
         conn = get_sqlite_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT user_id, status FROM tickets WHERE ticket_id = ?", (self.ticket_id,))
+        cursor.execute("SELECT user_id, status, category FROM tickets WHERE ticket_id = ?", (self.ticket_id,))
         result = cursor.fetchone()
         
-        is_creator = False
-        ticket_closed = False
-        if result:
-            user_id = result[0]
-            if user_id == interaction.user.id:
-                is_creator = True
-            if result[1] == 'closed':
-                ticket_closed = True
+        if not result:
+            await interaction.response.send_message("Could not find ticket information.", ephemeral=True)
+            return
+        
+        user_id, status, ticket_category = result
+        
+        # Check if user is the creator
+        is_creator = user_id == interaction.user.id
+        
+        # Check if ticket is closed
+        ticket_closed = status == 'closed'
+        
+        # Check permissions based on ticket category
+        has_permission = False
+        
+        if ticket_category == 'staff':
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
             
-        if not (staff_role in interaction.user.roles or is_creator):
+            if (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles):
+                has_permission = True
+        
+        elif ticket_category == 'gang':
+            gang_staff_role = discord.utils.get(interaction.guild.roles, id=GANG_REPORT_ROLE_ID)
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+            
+            if (gang_staff_role and gang_staff_role in interaction.user.roles) or \
+               (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles):
+                has_permission = True
+        
+        elif ticket_category == 'ban_appeal':
+            ban_appeal_role = discord.utils.get(interaction.guild.roles, id=BAN_APPEAL_ROLE_ID)
+            senior_admin_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+            management_role = discord.utils.get(interaction.guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+            
+            if (ban_appeal_role and ban_appeal_role in interaction.user.roles) or \
+               (senior_admin_role and senior_admin_role in interaction.user.roles) or \
+               (management_role and management_role in interaction.user.roles):
+                has_permission = True
+        
+        else:
+            staff_role = discord.utils.get(interaction.guild.roles, id=STAFF_ROLE_ID)
+            if staff_role and staff_role in interaction.user.roles:
+                has_permission = True
+            elif is_creator and ticket_closed:
+                has_permission = True
+        
+        if not has_permission:
             await interaction.response.send_message("You don't have permission to delete this ticket.", ephemeral=True)
             return
-            
+        
         await interaction.response.defer()
         
         cursor.execute("SELECT channel_id, user_id FROM tickets WHERE ticket_id = ?", (self.ticket_id,))
@@ -415,15 +669,64 @@ async def create_ticket(interaction, ticket_type):
     channel_name = f"{ticket_type}-{user.name}-{ticket_id}".lower()
     channel_name = ''.join(e for e in channel_name if e.isalnum() or e == '-')[:100]
     
+    # Default overwrites for most ticket types ( this overwrites category permissions ) 
     overwrites = {
         guild.default_role: discord.PermissionOverwrite(read_messages=False),
         user: discord.PermissionOverwrite(read_messages=True, send_messages=True),
         guild.me: discord.PermissionOverwrite(read_messages=True, send_messages=True, manage_channels=True)
     }
     
-    staff_role = discord.utils.get(guild.roles, id=STAFF_ROLE_ID)
-    if staff_role:
-        overwrites[staff_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    # Apply permissions based on ticket type lol i lowkey forgot to add this shit 
+    if ticket_type == 'staff':
+        # For staff report tickets, only specific admin roles can see them
+        senior_admin_role = discord.utils.get(guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+        management_role = discord.utils.get(guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+        
+        if senior_admin_role:
+            overwrites[senior_admin_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        
+        if management_role:
+            overwrites[management_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    
+    elif ticket_type == 'gang':
+        # For gang reports, only gang staff can see them
+        gang_staff_role = discord.utils.get(guild.roles, id=GANG_REPORT_ROLE_ID)
+        
+        if gang_staff_role:
+            overwrites[gang_staff_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        
+        # Also add the management roles to ensure they can see all tickets 
+        senior_admin_role = discord.utils.get(guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+        management_role = discord.utils.get(guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+        
+        if senior_admin_role:
+            overwrites[senior_admin_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        
+        if management_role:
+            overwrites[management_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    
+    elif ticket_type == 'ban_appeal':
+        # For ban appeals, only specific role can see them
+        ban_appeal_role = discord.utils.get(guild.roles, id=BAN_APPEAL_ROLE_ID)
+        
+        if ban_appeal_role:
+            overwrites[ban_appeal_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        
+        # change these in the env file or you can hard code them here if you want to, not needed however
+        senior_admin_role = discord.utils.get(guild.roles, id=STAFF_REPORT_ROLE_ID_1)
+        management_role = discord.utils.get(guild.roles, id=STAFF_REPORT_ROLE_ID_2)
+        
+        if senior_admin_role:
+            overwrites[senior_admin_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+        
+        if management_role:
+            overwrites[management_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
+    
+    else:
+        # For general tickets and tebex support, regular staff can see them
+        staff_role = discord.utils.get(guild.roles, id=STAFF_ROLE_ID)
+        if staff_role:
+            overwrites[staff_role] = discord.PermissionOverwrite(read_messages=True, send_messages=True)
     
     try:
         channel = await category.create_text_channel(name=channel_name, overwrites=overwrites)
@@ -541,6 +844,15 @@ async def create_ticket(interaction, ticket_type):
             
             view = TicketActionsView(ticket_id)
             await channel.send(embed=embed, view=view)
+        
+        # Add special notice based on ticket type
+        if ticket_type == 'staff':
+            special_notice = discord.Embed(
+                title="Staff Report - Confidential",
+                description="This is a staff report ticket and is only visible to management.\nPlease provide details about the staff member you are reporting and any evidence you have.",
+                color=discord.Color.red()
+            )
+            await channel.send(embed=special_notice)
         
         await interaction.followup.send(
             f"Your ticket has been created: {channel.mention}",
