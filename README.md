@@ -12,6 +12,7 @@ A Discord bot system for managing qbox server communities. Combines player looku
 - **Vehicle Inventory Search** - Check trunk and glovebox contents by plate
 - **Character Profiles** - View detailed character stats and demographics
 - **Reaction Roles** - Automatically assign roles based on reactions
+- **DB Fetching** - Please note this bot requires qbox core to be somewhat updated to include the `users` db table. if you have modified your table or dont use it this bot wont work unless you change it yourself
 
 ### 🎫 Ticket System
 - **Category-Based Tickets** - Different ticket types for different needs
