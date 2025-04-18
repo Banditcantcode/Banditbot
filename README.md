@@ -1,21 +1,18 @@
-
-A Discord bot system for managing qbox server communities. Combines player lookup capabilities with a full-featured ticket support system. I also host this on a seperate linux vps to main server, so you will need to make a read only account in heidi. Unsure if it will work on localhsot did not test it is better to host it on a seperate server in my opinion. Please note its extremely basic and not advanced. hence it runs on 2 different py files
-
-### 🔍 Finder Bot
+### Player data fetcher
 - **Detailed Player Lookups** - Find all characters, licenses, and player details
 - **Vehicle Inventory Search** - Check trunk and glovebox contents by plate
 - **Character Profiles** - View detailed character stats and demographics
 - **Reaction Roles** - Automatically assign roles based on reactions - for reacting to a message to get verified role as an exmaple 
 - **DB Fetching** - Please note this bot requires qbox core to be somewhat updated to include the `users` db table. if you have modified your table or dont use it this bot wont work unless you change it yourself
 
-### 🎫 Ticket System
+### Ticket System
 - **Category-Based Tickets** - Different ticket types for different needs
 - **Staff Claiming** - Staff can claim tickets to avoid duplicate responses
 - **User Data Integration** - Shows FiveM/game data in tickets
 - **Transcripts** - Automatically archives closed tickets
 - **Customizable Categories** - Easy to configure for your server's needs
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Python 3.10+
@@ -38,7 +35,7 @@ cp .env
 python main.py
 ```
 
-## 💻 Commands
+## Commands
 
 ### Player Commands
 | Command | Description |
@@ -56,7 +53,7 @@ python main.py
 | 🔒 **Close Ticket** | Close and archive the ticket | Staff & Creator |
 | 🗑️ **Delete Ticket** | Remove closed ticket | Staff |
 
-## 🛠️ Configuration
+## Configuration
 
 All settings are managed through the `.env` file 
 
@@ -65,7 +62,7 @@ All settings are managed through the `.env` file
 - Discord IDs (roles, channels, etc.)
 - Category IDs for ticket system
 
-## 📂 Running the Bots
+## Running the Bots
 
 The system is designed to run both bots together using the main script:
 
@@ -76,7 +73,7 @@ python main.py
 
 This will start both the Finder bot and the Ticket system in separate threads. The Ticket system will automatically create the ticket dropdown message if one doesn't exist in the ticket channel.
 
-You can also run components individually for testing:
+You can also run components individually for testing if your trying to add things:
 
 ```bash
 # Run the Finder bot only
@@ -86,10 +83,12 @@ python -c "from modules.finder.bot import run; run()"
 python -c "from modules.tickets.bot import run; run()"
 ```
 
-Note: When the Ticket system starts, it will automatically:
+Note: When the bot  starts, it will automatically:
 1. Check if a ticket message exists in the configured channel
 2. If no message exists, it will create a new one with the dropdown menu
 3. No manual setup command is required
+4. You also need to make sure your qbox version is somewhat upto date with the users table
+5. I never tested this on a localhost as its hosted on a linux vps away from my live server just make a read only account for the db
 
 ## 🤝 Contributing
 
@@ -98,7 +97,3 @@ Got ideas or improvements? PRs are welcome! Feel free to fork and contribute.
 ## 📜 License
 
 This project is available under the MIT License - see the LICENSE file for details.
-
----
-
-Made with ❤️ for the Nova Gaming community 
