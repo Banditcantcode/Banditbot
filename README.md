@@ -63,7 +63,7 @@ python main.py
 
 ## 🛠️ Configuration
 
-All settings are managed through the `.env` file - no hardcoded values! Includes:
+All settings are managed through the `.env` file 
 
 - Discord Token & Bot Settings
 - Database Credentials
