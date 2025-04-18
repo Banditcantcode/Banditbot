@@ -4,6 +4,7 @@
 - **Character Profiles** - View detailed character stats and demographics
 - **Reaction Roles** - Automatically assign roles based on reactions - for reacting to a message to get verified role as an exmaple 
 - **DB Fetching** - Please note this bot requires qbox core to be somewhat updated to include the `users` db table. if you have modified your table or dont use it this bot wont work unless you change it yourself
+- Vehicles command will also show 🔴 for cars that are in left out and 🟢  will show for vehicles that are stored in the garage
 
 ### Ticket System
 - **Category-Based Tickets** - Different ticket types for different needs
