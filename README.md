@@ -70,7 +70,7 @@ All settings are managed through the `.env` file
 - Discord IDs (roles, channels, etc.)
 - Category IDs for ticket system
 
-## 📂📂 Running the Bots
+## 📂 Running the Bots
 
 The system is designed to run both bots together using the main script:
 
