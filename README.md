@@ -16,7 +16,6 @@
 
 ### Prerequisites
 - Python 3.10+
-- Discord Developer Account
 - MySQL Database (for player data)
 
 ### Quick Setup
