@@ -70,22 +70,7 @@ All settings are managed through the `.env` file
 - Discord IDs (roles, channels, etc.)
 - Category IDs for ticket system
 
-## 📂 Project Structure
-
-```
-.
-├── 📁 logs/                # Log files
-├── 📁 modules/
-│   ├── 📁 finder/          # Player lookup commands
-│   ├── 📁 tickets/         # Ticket system
-│   └── 📁 utils/           # Shared utilities
-├── 📄 .env                 # Environment variables
-├── 📄 main.py              # Main entry point
-├── 📄 requirements.txt     # Dependencies
-└── 📄 README.md            # You are here!
-```
-
-## �� Running the Bots
+## 📂📂 Running the Bots
 
 The system is designed to run both bots together using the main script:
 
