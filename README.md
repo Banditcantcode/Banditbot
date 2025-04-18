@@ -88,6 +88,7 @@ Note: When the bot  starts, it will automatically:
 3. No manual setup command is required
 4. You also need to make sure your qbox version is somewhat upto date with the users table
 5. I never tested this on a localhost as its hosted on a linux vps away from my live server just make a read only account for the db
+6. this will probs not be maintained either
 
 ## 🤝 Contributing
 
