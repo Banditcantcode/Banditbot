@@ -3,7 +3,7 @@
 ![Discord](https://img.shields.io/badge/Discord-7289DA?style=for-the-badge&logo=discord&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 
-A Discord bot system for managing FiveM server communities. Combines player lookup capabilities with a full-featured ticket support system. I also host this on a seperate linux vps to main server, so you will need to make a read only account in heidi. Unsure if it will work on localhsot did not test it is better to host it on a seperate server in my opinion. Please note its extremely basic and not advanced. hence it runs on 2 different py files
+A Discord bot system for managing qbox server communities. Combines player lookup capabilities with a full-featured ticket support system. I also host this on a seperate linux vps to main server, so you will need to make a read only account in heidi. Unsure if it will work on localhsot did not test it is better to host it on a seperate server in my opinion. Please note its extremely basic and not advanced. hence it runs on 2 different py files
 
 ## ✨ Key Features
 
