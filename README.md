@@ -48,10 +48,10 @@ python main.py
 ### Ticket Controls
 | Button | Function | Access |
 |--------|----------|--------|
-| 🔵 **Claim Ticket** | Mark as being handled by you | Staff |
-| ✏️ **Rename Ticket** | Change the ticket title | Staff |
-| 🔒 **Close Ticket** | Close and archive the ticket | Staff & Creator |
-| 🗑️ **Delete Ticket** | Remove closed ticket | Staff |
+|  **Claim Ticket** | Mark as being handled by you | Staff |
+|  **Rename Ticket** | Change the ticket title | Staff |
+|  **Close Ticket** | Close and archive the ticket | Staff & Creator |
+|  **Delete Ticket** | Remove closed ticket | Staff |
 
 ## Configuration
 
